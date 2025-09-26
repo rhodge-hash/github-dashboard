@@ -1,103 +1,164 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { Activity, Clock, TrendingUp, AlertCircle, Github, RefreshCw } from 'lucide-react';
+import { MetricCard } from '@/components/MetricCard';
+import { BuildTrendsChart, BuildStatusPieChart } from '@/components/Charts';
+import { RecentBuilds } from '@/components/RecentBuilds';
+import { RepositorySettings } from '@/components/RepositorySettings';
+import { GitHubService, generateDemoData, demoWorkflowRuns } from '@/lib/github-service';
+import { GitHubMetrics, WorkflowRun, Repository } from '@/types/github';
+
+export default function GitHubDashboard() {
+  const [repository, setRepository] = useState<Repository>({ owner: 'facebook', repo: 'react' });
+  const [githubToken, setGithubToken] = useState('');
+  const [metrics, setMetrics] = useState<GitHubMetrics>(generateDemoData());
+  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>(demoWorkflowRuns);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [usingDemoData, setUsingDemoData] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const service = new GitHubService(githubToken);
+      const runs = await service.getWorkflowRuns(repository);
+      const calculatedMetrics = service.calculateMetrics(runs);
+      
+      setWorkflowRuns(runs);
+      setMetrics(calculatedMetrics);
+      setUsingDemoData(false);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Error fetching GitHub data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      // Keep using demo data on error
+      setUsingDemoData(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRepositoryChange = (owner: string, repo: string) => {
+    setRepository({ owner, repo });
+  };
+
+  const handleTokenChange = (token: string) => {
+    setGithubToken(token);
+  };
+
+  // Generate demo chart data
+  const buildTrendsData = [
+    { date: '2024-01-10', successful: 8, failed: 2, total: 10 },
+    { date: '2024-01-11', successful: 12, failed: 1, total: 13 },
+    { date: '2024-01-12', successful: 7, failed: 3, total: 10 },
+    { date: '2024-01-13', successful: 15, failed: 0, total: 15 },
+    { date: '2024-01-14', successful: 9, failed: 2, total: 11 },
+    { date: '2024-01-15', successful: 11, failed: 1, total: 12 },
+    { date: '2024-01-16', successful: 14, failed: 2, total: 16 },
+  ];
+
+  const buildStatusData = [
+    { name: 'Success', value: Math.round(metrics.totalBuilds * (metrics.buildSuccessRate / 100)) },
+    { name: 'Failed', value: metrics.failedBuilds },
+    { name: 'Cancelled', value: Math.max(0, metrics.totalBuilds - Math.round(metrics.totalBuilds * (metrics.buildSuccessRate / 100)) - metrics.failedBuilds) },
+  ];
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Github className="w-8 h-8 text-gray-900 dark:text-white" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  GitHub Dashboard
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {repository.owner}/{repository.repo}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              {usingDemoData && (
+                <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">Using demo data</span>
+                </div>
+              )}
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>{loading ? 'Loading...' : 'Refresh'}</span>
+              </button>
+            </div>
+          </div>
+          {error && (
+            <div className="mt-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+            </div>
+          )}
+          <div className="mt-2 text-xs text-gray-500">
+            Last updated: {lastUpdated.toLocaleString()}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MetricCard
+            title="Build Success Rate"
+            value={`${metrics.buildSuccessRate.toFixed(1)}`}
+            unit="%"
+            trend={metrics.buildSuccessRate >= 90 ? 'up' : metrics.buildSuccessRate >= 70 ? 'neutral' : 'down'}
+            icon={<TrendingUp className="w-5 h-5" />}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <MetricCard
+            title="Average Build Duration"
+            value={`${metrics.averageBuildDuration.toFixed(1)}`}
+            unit="min"
+            trend={metrics.averageBuildDuration <= 5 ? 'up' : metrics.averageBuildDuration <= 10 ? 'neutral' : 'down'}
+            icon={<Clock className="w-5 h-5" />}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          <MetricCard
+            title="Failed Builds"
+            value={metrics.failedBuilds}
+            trend={metrics.failedBuilds === 0 ? 'up' : metrics.failedBuilds <= 3 ? 'neutral' : 'down'}
+            icon={<AlertCircle className="w-5 h-5" />}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <MetricCard
+            title="Test Pass Rate"
+            value={`${metrics.testPassRate.toFixed(1)}`}
+            unit="%"
+            trend={metrics.testPassRate >= 95 ? 'up' : metrics.testPassRate >= 85 ? 'neutral' : 'down'}
+            icon={<Activity className="w-5 h-5" />}
+          />
+        </div>
+
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <BuildTrendsChart data={buildTrendsData} />
+          <BuildStatusPieChart data={buildStatusData} />
+        </div>
+
+        {/* Recent Builds */}
+        <RecentBuilds runs={workflowRuns} />
+
+        {/* Repository Settings */}
+        <RepositorySettings
+          repository={repository}
+          onRepositoryChange={handleRepositoryChange}
+          githubToken={githubToken}
+          onTokenChange={handleTokenChange}
+        />
+      </div>
     </div>
   );
 }
