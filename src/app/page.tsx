@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Activity, Clock, TrendingUp, AlertCircle, Github, RefreshCw } from 'lucide-react';
 import { MetricCard } from '@/components/MetricCard';
 import { BuildTrendsChart, BuildStatusPieChart } from '@/components/Charts';
@@ -18,8 +18,9 @@ export default function GitHubDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [usingDemoData, setUsingDemoData] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -35,12 +36,32 @@ export default function GitHubDashboard() {
     } catch (err) {
       console.error('Error fetching GitHub data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
-      // Keep using demo data on error
-      setUsingDemoData(true);
+      // Only fallback to demo data if no token is available or it's a rate limit error
+      const isTokenAvailable = githubToken && githubToken.length > 0;
+      if (!isTokenAvailable) {
+        setError('GitHub token not configured. Showing demo data. Configure token in repository secrets for live data.');
+        setUsingDemoData(true);
+      } else {
+        // Keep existing data on error if we have a token
+        setUsingDemoData(false);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [githubToken, repository]);
+
+  // Auto-fetch data on component mount
+  useEffect(() => {
+    if (!hasAttemptedFetch) {
+      setHasAttemptedFetch(true);
+      // Set initial loading state if we have a token
+      if (githubToken && githubToken.length > 0) {
+        setLoading(true);
+        setUsingDemoData(false);
+      }
+      fetchData();
+    }
+  }, [hasAttemptedFetch, fetchData, githubToken]);
 
   const handleRepositoryChange = (owner: string, repo: string) => {
     setRepository({ owner, repo });
@@ -85,10 +106,16 @@ export default function GitHubDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              {usingDemoData && (
+              {loading && (
+                <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading live data...</span>
+                </div>
+              )}
+              {usingDemoData && !loading && !githubToken && (
                 <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400">
                   <AlertCircle className="w-4 h-4" />
-                  <span className="text-sm">Using demo data</span>
+                  <span className="text-sm">Demo data - configure token for live metrics</span>
                 </div>
               )}
               <button
@@ -112,31 +139,31 @@ export default function GitHubDashboard() {
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 ${loading ? 'opacity-75' : ''}`}>
           <MetricCard
             title="Build Success Rate"
-            value={`${metrics.buildSuccessRate.toFixed(1)}`}
-            unit="%"
+            value={loading ? "..." : `${metrics.buildSuccessRate.toFixed(1)}`}
+            unit={loading ? "" : "%"}
             trend={metrics.buildSuccessRate >= 90 ? 'up' : metrics.buildSuccessRate >= 70 ? 'neutral' : 'down'}
             icon={<TrendingUp className="w-5 h-5" />}
           />
           <MetricCard
             title="Average Build Duration"
-            value={`${metrics.averageBuildDuration.toFixed(1)}`}
-            unit="min"
+            value={loading ? "..." : `${metrics.averageBuildDuration.toFixed(1)}`}
+            unit={loading ? "" : "min"}
             trend={metrics.averageBuildDuration <= 5 ? 'up' : metrics.averageBuildDuration <= 10 ? 'neutral' : 'down'}
             icon={<Clock className="w-5 h-5" />}
           />
           <MetricCard
             title="Failed Builds"
-            value={metrics.failedBuilds}
+            value={loading ? "..." : metrics.failedBuilds}
             trend={metrics.failedBuilds === 0 ? 'up' : metrics.failedBuilds <= 3 ? 'neutral' : 'down'}
             icon={<AlertCircle className="w-5 h-5" />}
           />
           <MetricCard
             title="Test Pass Rate"
-            value={`${metrics.testPassRate.toFixed(1)}`}
-            unit="%"
+            value={loading ? "..." : `${metrics.testPassRate.toFixed(1)}`}
+            unit={loading ? "" : "%"}
             trend={metrics.testPassRate >= 95 ? 'up' : metrics.testPassRate >= 85 ? 'neutral' : 'down'}
             icon={<Activity className="w-5 h-5" />}
           />
