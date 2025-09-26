@@ -71,22 +71,55 @@ export default function GitHubDashboard() {
     setGithubToken(token);
   };
 
-  // Generate demo chart data
-  const buildTrendsData = [
-    { date: '2024-01-10', successful: 8, failed: 2, total: 10 },
-    { date: '2024-01-11', successful: 12, failed: 1, total: 13 },
-    { date: '2024-01-12', successful: 7, failed: 3, total: 10 },
-    { date: '2024-01-13', successful: 15, failed: 0, total: 15 },
-    { date: '2024-01-14', successful: 9, failed: 2, total: 11 },
-    { date: '2024-01-15', successful: 11, failed: 1, total: 12 },
-    { date: '2024-01-16', successful: 14, failed: 2, total: 16 },
-  ];
+  // Generate chart data from real workflow runs
+  const generateBuildTrendsData = (runs: WorkflowRun[]) => {
+    if (runs.length === 0) {
+      return [];
+    }
+
+    // Group runs by date
+    const runsByDate: { [key: string]: { successful: number; failed: number; total: number } } = {};
+    
+    runs.forEach(run => {
+      const date = new Date(run.created_at).toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      if (!runsByDate[date]) {
+        runsByDate[date] = { successful: 0, failed: 0, total: 0 };
+      }
+      
+      runsByDate[date].total += 1;
+      
+      if (run.status === 'completed') {
+        if (run.conclusion === 'success') {
+          runsByDate[date].successful += 1;
+        } else if (run.conclusion === 'failure') {
+          runsByDate[date].failed += 1;
+        }
+      }
+    });
+    
+    // Convert to array and sort by date (most recent last)
+    return Object.entries(runsByDate)
+      .map(([date, stats]) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        rawDate: date,
+        successful: stats.successful,
+        failed: stats.failed,
+        total: stats.total
+      }))
+      .sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime())
+      .slice(-7) // Show last 7 days of data
+      .map(({ rawDate: _, ...rest }) => rest); // Remove rawDate from final output
+  };
+
+  const buildTrendsData = generateBuildTrendsData(workflowRuns);
 
   const buildStatusData = [
-    { name: 'Success', value: Math.round(metrics.totalBuilds * (metrics.buildSuccessRate / 100)) },
-    { name: 'Failed', value: metrics.failedBuilds },
-    { name: 'Cancelled', value: Math.max(0, metrics.totalBuilds - Math.round(metrics.totalBuilds * (metrics.buildSuccessRate / 100)) - metrics.failedBuilds) },
-  ];
+    { name: 'Success', value: workflowRuns.filter(run => run.conclusion === 'success').length },
+    { name: 'Failed', value: workflowRuns.filter(run => run.conclusion === 'failure').length },
+    { name: 'Cancelled', value: workflowRuns.filter(run => run.conclusion === 'cancelled').length },
+    { name: 'Other', value: workflowRuns.filter(run => run.status === 'in_progress' || (!['success', 'failure', 'cancelled'].includes(run.conclusion || ''))).length },
+  ].filter(item => item.value > 0); // Only show categories with data
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

@@ -12,6 +12,20 @@ interface BuildTrendsChartProps {
 }
 
 export function BuildTrendsChart({ data }: BuildTrendsChartProps) {
+  if (data.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Build Trends</h3>
+        <div className="flex items-center justify-center h-64 text-gray-500">
+          <div className="text-center">
+            <p>No build data available</p>
+            <p className="text-sm mt-2">Workflow runs will appear here once available</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Build Trends</h3>
@@ -42,6 +56,7 @@ export function BuildTrendsChart({ data }: BuildTrendsChartProps) {
             stroke="#10B981" 
             strokeWidth={2}
             dot={{ r: 4 }}
+            name="Successful Builds"
           />
           <Line 
             type="monotone" 
@@ -49,6 +64,7 @@ export function BuildTrendsChart({ data }: BuildTrendsChartProps) {
             stroke="#EF4444" 
             strokeWidth={2}
             dot={{ r: 4 }}
+            name="Failed Builds"
           />
         </LineChart>
       </ResponsiveContainer>
@@ -66,6 +82,20 @@ interface BuildStatusPieChartProps {
 const COLORS = ['#10B981', '#EF4444', '#F59E0B', '#6B7280'];
 
 export function BuildStatusPieChart({ data }: BuildStatusPieChartProps) {
+  if (data.length === 0 || data.every(item => item.value === 0)) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Build Status Distribution</h3>
+        <div className="flex items-center justify-center h-64 text-gray-500">
+          <div className="text-center">
+            <p>No build status data available</p>
+            <p className="text-sm mt-2">Build statuses will appear here once workflows complete</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Build Status Distribution</h3>
@@ -92,6 +122,7 @@ export function BuildStatusPieChart({ data }: BuildStatusPieChartProps) {
               color: 'white'
             }}
           />
+          <Legend />
         </PieChart>
       </ResponsiveContainer>
     </div>
