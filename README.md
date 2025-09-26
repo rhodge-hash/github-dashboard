@@ -119,14 +119,25 @@ npm run build
 
 ### Default Setup
 - The dashboard starts with demo data showing sample metrics
-- Default repository is set to `facebook/react` (configurable)
+- Default repository is set to `rhodge-hash/github-dashboard` (configurable)
+- GitHub API token is automatically configured via repository secrets for deployed version
 
 ### Configuring Your Repository
 1. Click the settings icon in the top-right corner
 2. Enter the repository owner (e.g., `microsoft`)
 3. Enter the repository name (e.g., `vscode`)
-4. Optionally add your GitHub token to avoid rate limits
+4. The GitHub token is pre-configured for the deployed version
 5. Click "Save" and then "Refresh"
+
+### GitHub Token Configuration
+For the **deployed version** on GitHub Pages:
+- The token is automatically configured via GitHub repository secrets
+- No additional configuration needed
+
+For **local development**:
+- Copy `.env.local.example` to `.env.local`
+- Add your GitHub token to avoid rate limits
+- Or use the settings panel in the application
 
 ### Understanding the Metrics
 

@@ -10,8 +10,8 @@ import { GitHubService, generateDemoData, demoWorkflowRuns } from '@/lib/github-
 import { GitHubMetrics, WorkflowRun, Repository } from '@/types/github';
 
 export default function GitHubDashboard() {
-  const [repository, setRepository] = useState<Repository>({ owner: 'facebook', repo: 'react' });
-  const [githubToken, setGithubToken] = useState('');
+  const [repository, setRepository] = useState<Repository>({ owner: 'rhodge-hash', repo: 'github-dashboard' });
+  const [githubToken, setGithubToken] = useState(process.env.NEXT_PUBLIC_GITHUB_TOKEN || '');
   const [metrics, setMetrics] = useState<GitHubMetrics>(generateDemoData());
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>(demoWorkflowRuns);
   const [loading, setLoading] = useState(false);

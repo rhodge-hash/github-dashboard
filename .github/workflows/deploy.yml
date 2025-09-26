@@ -34,7 +34,11 @@ jobs:
       
     - name: Build application
       run: npm run build
-      
+      env:
+        NEXT_PUBLIC_GITHUB_TOKEN: ${{ secrets.GH_API_TOKEN }}
+        NEXT_PUBLIC_DEFAULT_OWNER: rhodge-hash
+        NEXT_PUBLIC_DEFAULT_REPO: github-dashboard
+        
     - name: Setup Pages
       uses: actions/configure-pages@v4
       with:
